@@ -7,6 +7,7 @@
 //
 // ブラウザで http://localhost:8080 を開く。
 
+import { serve } from "@hono/node-server";
 import { Hono, type Context } from "hono";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import { createClient as createConnectClient } from "@connectrpc/connect";
@@ -228,9 +229,6 @@ app.get("/logout", (c) => {
   return c.html(`<p>ログアウトしました。<a href="/">再ログイン</a></p>`);
 });
 
-export default {
-  port: PORT,
-  fetch: app.fetch,
-};
-
-console.log(`listening on http://localhost:${PORT}`);
+serve({ fetch: app.fetch, port: PORT }, () => {
+  console.log(`listening on http://localhost:${PORT}`);
+});

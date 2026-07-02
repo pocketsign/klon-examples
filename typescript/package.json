@@ -17,6 +17,7 @@
     "@bufbuild/protobuf": "^2.12.0",
     "@connectrpc/connect": "^2.1.1",
     "@connectrpc/connect-node": "^2.1.1",
+    "@hono/node-server": "^2.0.6",
     "@pocketsign/klon-sdk": "0.0.0-20260623090628-abe6aa552826",
     "hono": "^4.12.23"
   },
