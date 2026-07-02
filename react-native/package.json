@@ -13,14 +13,13 @@
     "format:fix": "oxfmt",
     "check": "pnpm run lint && pnpm run format",
     "fix": "pnpm run lint:fix && pnpm run format:fix",
-    "eas-build-pre-install": "./scripts/eas-build-pre-install.sh",
-    "eas-build-post-install": "pnpm --filter @pocketsign/klon-sdk run build"
+    "eas-build-pre-install": "./scripts/eas-build-pre-install.sh"
   },
   "dependencies": {
     "@expo/dom-webview": "^56.0.5",
     "@expo/metro-runtime": "~56.0.13",
     "@expo/vector-icons": "^15.1.1",
-    "@pocketsign/klon-sdk": "workspace:*",
+    "@pocketsign/klon-sdk": "0.0.0-20260623090628-abe6aa552826",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/datetimepicker": "9.1.0",
     "@react-navigation/bottom-tabs": "^7.16.2",
@@ -56,6 +55,8 @@
     "@types/react": "~19.2.15",
     "eslint": "^9.39.4",
     "eslint-config-expo": "~56.0.4",
+    "oxfmt": "^0.52.0",
     "typescript": "~6.0.3"
-  }
+  },
+  "packageManager": "pnpm@11.9.0"
 }
