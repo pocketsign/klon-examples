@@ -20,20 +20,24 @@ import {
   type AuthorizationSession,
   type TokenSet,
 } from "@pocketsign/klon-sdk";
-import { RegistryUserService } from "@pocketsign/klon/es/pocketsign/link/v2/registry_user_service_pb";
+import { RegistryUserService } from "@buf/pocketsign_apis.bufbuild_es/pocketsign/link/v2/registry_user_service_pb.js";
 import { toJson } from "@bufbuild/protobuf";
-import { RegistryUserServiceReadResourceValuesResponseSchema } from "@pocketsign/klon/es/pocketsign/link/v2/registry_user_service_pb";
+import { RegistryUserServiceReadResourceValuesResponseSchema } from "@buf/pocketsign_apis.bufbuild_es/pocketsign/link/v2/registry_user_service_pb.js";
 
-const CLIENT_ID = process.env.CLIENT_ID ?? "c9cb64b1-2c9f-4738-8b1b-09009a13a6a6";
-const CLIENT_SECRET = process.env.CLIENT_SECRET ?? "wHfdmAVPWbX5VHnX4pZpQ3SKkUJWtH";
+const CLIENT_ID = process.env.CLIENT_ID;
+const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const ISSUER = process.env.ISSUER ?? "https://klonidp.localhost";
 const REGISTRY_URL = process.env.REGISTRY_URL ?? "https://klonregistry.localhost";
 const PORT = Number(process.env.PORT ?? "8080");
 
+if (!CLIENT_ID || !CLIENT_SECRET) {
+  throw new Error("CLIENT_ID と CLIENT_SECRET を設定してください (cp .env.template .env)");
+}
+
 const oidcClient = createClient({
   issuer: ISSUER,
   clientId: CLIENT_ID,
-  clientSecret: CLIENT_SECRET || undefined,
+  clientSecret: CLIENT_SECRET,
   redirectUri: "https://klonexample.localhost/callback",
 });
 
