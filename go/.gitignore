@@ -1,2 +1,5 @@
 # Build binary
 go
+
+# Environment
+.env
