@@ -51,7 +51,7 @@ const TOKEN_COOKIE = "oidc_tokens";
 const TOKEN_MAX_AGE = 60 * 60 * 24; // 24 hours
 
 function setTokenCookie(c: Context, tokens: TokenSet): void {
-  setCookie(c, TOKEN_COOKIE, btoa(JSON.stringify(tokens)), {
+  setCookie(c, TOKEN_COOKIE, Buffer.from(JSON.stringify(tokens), "utf-8").toString("base64url"), {
     httpOnly: true,
     secure: true,
     sameSite: "Lax",
@@ -64,7 +64,7 @@ function getTokenFromCookie(c: Context): TokenSet | null {
   const cookie = getCookie(c, TOKEN_COOKIE);
   if (!cookie) return null;
   try {
-    return JSON.parse(atob(cookie)) as TokenSet;
+    return JSON.parse(Buffer.from(cookie, "base64url").toString("utf-8")) as TokenSet;
   } catch {
     return null;
   }
