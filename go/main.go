@@ -122,7 +122,7 @@ func main() {
 	clientID := os.Getenv("CLIENT_ID")
 	clientSecret := os.Getenv("CLIENT_SECRET")
 	registryURL := envOrDefault("REGISTRY_URL", "https://registry.mock.klon.ing")
-	redirectURI := envOrDefault("REDIRECT_URI", "https://klonexample.localhost/callback")
+	redirectURI := envOrDefault("REDIRECT_URI", "http://localhost:8080/callback")
 	port := envOrDefault("PORT", "8080")
 
 	if clientID == "" || clientSecret == "" {
