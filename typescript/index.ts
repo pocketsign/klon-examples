@@ -30,6 +30,7 @@ const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const ISSUER = process.env.ISSUER ?? "https://id.mock.klon.ing";
 const REGISTRY_URL = process.env.REGISTRY_URL ?? "https://registry.mock.klon.ing";
 const PORT = Number(process.env.PORT ?? "8080");
+const REDIRECT_URI = process.env.REDIRECT_URI ?? "http://localhost:8080/callback";
 
 if (!CLIENT_ID || !CLIENT_SECRET) {
   throw new Error("CLIENT_ID と CLIENT_SECRET を設定してください (cp .env.template .env)");
@@ -39,7 +40,7 @@ const oidcClient = createClient({
   issuer: ISSUER,
   clientId: CLIENT_ID,
   clientSecret: CLIENT_SECRET,
-  redirectUri: "https://klonexample.localhost/callback",
+  redirectUri: REDIRECT_URI,
 });
 
 // --- セッション (Cookie ベース) ---
