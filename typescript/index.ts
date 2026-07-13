@@ -27,8 +27,8 @@ import { RegistryUserServiceReadResourceValuesResponseSchema } from "@buf/pocket
 
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
-const ISSUER = process.env.ISSUER ?? "https://klonidp.localhost";
-const REGISTRY_URL = process.env.REGISTRY_URL ?? "https://klonregistry.localhost";
+const ISSUER = process.env.ISSUER ?? "https://id.mock.klon.ing";
+const REGISTRY_URL = process.env.REGISTRY_URL ?? "https://registry.mock.klon.ing";
 const PORT = Number(process.env.PORT ?? "8080");
 
 if (!CLIENT_ID || !CLIENT_SECRET) {
