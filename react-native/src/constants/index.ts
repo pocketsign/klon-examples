@@ -1,5 +1,5 @@
 // IdP のベースURL
-export const IDP_BASE_URL = process.env.EXPO_PUBLIC_IDP_BASE_URL ?? "https://id.mock.klon.ing";
+export const IDP_BASE_URL = process.env.EXPO_PUBLIC_IDP_BASE_URL ?? "https://id.mock.klon.you";
 
 // rp-debug (L3 サービス) のURL
 export const RP_DEBUG_URL = process.env.EXPO_PUBLIC_RP_DEBUG_URL ?? "https://klonexample.localhost";
