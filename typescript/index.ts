@@ -27,8 +27,8 @@ import { RegistryUserServiceReadResourceValuesResponseSchema } from "@buf/pocket
 
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
-const ISSUER = process.env.ISSUER ?? "https://id.mock.klon.ing";
-const REGISTRY_URL = process.env.REGISTRY_URL ?? "https://registry.mock.klon.ing";
+const ISSUER = process.env.ISSUER ?? "https://id.mock.klon.you";
+const REGISTRY_URL = process.env.REGISTRY_URL ?? "https://registry.mock.klon.you";
 const PORT = Number(process.env.PORT ?? "8080");
 const REDIRECT_URI = process.env.REDIRECT_URI ?? "http://localhost:8080/callback";
 
