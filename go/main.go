@@ -118,10 +118,10 @@ func (t *bearerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 func main() {
-	issuer := envOrDefault("ISSUER", "https://id.mock.klon.ing")
+	issuer := envOrDefault("ISSUER", "https://id.mock.klon.you")
 	clientID := os.Getenv("CLIENT_ID")
 	clientSecret := os.Getenv("CLIENT_SECRET")
-	registryURL := envOrDefault("REGISTRY_URL", "https://registry.mock.klon.ing")
+	registryURL := envOrDefault("REGISTRY_URL", "https://registry.mock.klon.you")
 	redirectURI := envOrDefault("REDIRECT_URI", "http://localhost:8080/callback")
 	port := envOrDefault("PORT", "8080")
 
