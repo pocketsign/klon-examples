@@ -22,10 +22,10 @@ import (
 	"strings"
 	"sync"
 
+	"buf.build/gen/go/pocketsign/apis/connectrpc/go/pocketsign/link/v2/linkv2connect"
+	linkv2 "buf.build/gen/go/pocketsign/apis/protocolbuffers/go/pocketsign/link/v2"
 	"connectrpc.com/connect"
-	linkv2 "github.com/pocketsign/klon/protobuf/go/pocketsign/link/v2"
-	"github.com/pocketsign/klon/protobuf/go/pocketsign/link/v2/linkv2connect"
-	klon "github.com/pocketsign/klon/sdk/go"
+	klon "github.com/pocketsign/klon-sdk-go"
 )
 
 func envOrDefault(key, fallback string) string {
@@ -124,13 +124,17 @@ func respondJSON(w http.ResponseWriter, v any) {
 }
 
 func main() {
-	issuer := envOrDefault("ISSUER", "https://klonidp.localhost")
-	clientID := envOrDefault("CLIENT_ID", "c9cb64b1-2c9f-4738-8b1b-09009a13a6a6")
-	clientSecret := envOrDefault("CLIENT_SECRET", "wHfdmAVPWbX5VHnX4pZpQ3SKkUJWtH")
-	registryURL := envOrDefault("REGISTRY_URL", "https://klonregistry.localhost")
-	redirectURI := envOrDefault("REDIRECT_URI", "https://klonexample.localhost/callback")
+	issuer := envOrDefault("ISSUER", "https://id.mock.klon.you")
+	clientID := os.Getenv("CLIENT_ID")
+	clientSecret := os.Getenv("CLIENT_SECRET")
+	registryURL := envOrDefault("REGISTRY_URL", "https://registry.mock.klon.you")
+	redirectURI := envOrDefault("REDIRECT_URI", "http://localhost:8080/callback")
 	port := envOrDefault("PORT", "8080")
 	frontendDir := envOrDefault("FRONTEND_DIR", "../frontend/dist")
+
+	if clientID == "" || clientSecret == "" {
+		log.Fatal("CLIENT_ID と CLIENT_SECRET を設定してください (cp ../.env.template ../.env)")
+	}
 
 	oidcClient := klon.NewClient(klon.ClientConfig{
 		Issuer:       issuer,

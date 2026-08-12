@@ -3,6 +3,8 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [react()],
+  // .env は backend と共有するため mini-app/ 直下に置く
+  envDir: "..",
   server: {
     proxy: {
       "/authorize": "http://localhost:8080",
