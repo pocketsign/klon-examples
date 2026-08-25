@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { type IDTokenClaims, type TokenSet, refreshAccessToken, startLogin } from "../lib/auth";
+import {
+  type IDTokenClaims,
+  type TokenSet,
+  refreshAccessToken,
+  startLogin,
+  subscribeCallbackError,
+} from "../lib/auth";
 import { oidcClient } from "../lib/auth";
 import { clearTokens, loadTokens, saveTokens, subscribeTokens } from "../lib/token-storage";
 
@@ -58,6 +64,12 @@ export function useAuth() {
       applyTokens(tokens);
     });
 
+    // コールドスタート経路のトークン交換失敗を拾う。startLogin() の Promise は
+    // プロセス終了で失われているため、この経路以外では画面に伝わらない。
+    const unsubscribeError = subscribeCallbackError((error) => {
+      setState((prev) => ({ ...prev, isLoading: false, error: error.message }));
+    });
+
     loadTokens()
       .then((tokens) => {
         // 読み込み中に通知が届いていた場合、古い値で上書きしない。
@@ -68,7 +80,10 @@ export function useAuth() {
         setState((prev) => ({ ...prev, isLoading: false }));
       });
 
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+      unsubscribeError();
+    };
   }, []);
 
   const login = async () => {

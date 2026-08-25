@@ -70,6 +70,16 @@ let pendingAuth: PendingAuth | null = null;
 /** コールバックがどの経路で届いたか。ブラウザの閉じ方と復帰待ちの判断に使う。 */
 export type CallbackSource = "auth-session" | "navigation-screen" | "unknown";
 
+// コールドスタート経路では reject する Promise が失われているため、
+// エラーを画面へ伝える経路を別に持つ。これがないと失敗が無言になる。
+type CallbackErrorListener = (error: Error) => void;
+const callbackErrorListeners = new Set<CallbackErrorListener>();
+
+export function subscribeCallbackError(listener: CallbackErrorListener): () => void {
+  callbackErrorListeners.add(listener);
+  return () => callbackErrorListeners.delete(listener);
+}
+
 function waitForAppStateActive(): Promise<void> {
   if (AppState.currentState === "active") {
     return Promise.resolve();
@@ -255,7 +265,13 @@ export async function handleCallback(
     }
     return true;
   } catch (err) {
-    auth?.reject(err instanceof Error ? err : new Error(String(err)));
+    const error = err instanceof Error ? err : new Error(String(err));
+    if (auth) {
+      auth.reject(error);
+    } else {
+      // コールドスタート経路。reject 先がないので購読者 (useAuth) に通知する。
+      for (const listener of callbackErrorListeners) listener(error);
+    }
     return true;
   }
 }
