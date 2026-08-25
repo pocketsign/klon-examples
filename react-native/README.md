@@ -20,6 +20,16 @@ RFC 8252 (OAuth 2.0 for Native Apps) に従い、Public Client として OAuth 2
 
 ## セットアップ
 
+`@pocketsign/klon-sdk` は認証が必要な専用レジストリで配布している。
+[SDK 取得用トークンを作成](https://docs.p8n.app/docs/verify/guide/getting-started/sdk-token)し、
+VCS に記録されないユーザー設定 (`~/.npmrc`) に追加する。
+
+```ini
+//repo.platform.p8n.app/:_authToken=<YOUR_SDK_TOKEN>
+```
+
+詳細は [KLON SDK TypeScript のインストール手順](https://docs.p8n.app/docs/link-v2/klon-sdk-typescript/#インストール) を参照する。
+
 ```sh
 pnpm install
 cp .env.template .env

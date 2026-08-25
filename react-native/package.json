@@ -11,7 +11,8 @@
     "lint:fix": "expo lint --fix",
     "format": "oxfmt --check",
     "format:fix": "oxfmt",
-    "check": "pnpm run lint && pnpm run format",
+    "typecheck": "tsc --noEmit",
+    "check": "pnpm run lint && pnpm run format && pnpm run typecheck",
     "fix": "pnpm run lint:fix && pnpm run format:fix",
     "eas-build-pre-install": "./scripts/eas-build-pre-install.sh"
   },
@@ -36,7 +37,7 @@
     "react-native-reanimated": "4.3.1",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.25.2",
-    "react-native-webview": "^13.16.1"
+    "react-native-webview": "13.16.1"
   },
   "devDependencies": {
     "@types/react": "~19.2.15",

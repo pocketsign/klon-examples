@@ -20,6 +20,8 @@ export function useWebViewAuth() {
   });
 
   const handleShouldStartLoadWithRequest = (request: ShouldStartLoadRequest): boolean => {
+    if (!request.isTopFrame) return true;
+
     const action = classifyNavigation(request.url);
 
     if (action.type === "allow") {
