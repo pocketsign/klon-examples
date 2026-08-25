@@ -32,12 +32,55 @@ export type { IDTokenClaims, TokenSet };
 const customFetch: typeof globalThis.fetch = async (input, init) => {
   const res = await expoFetch(input, init);
   const body = await res.arrayBuffer();
-  return new Response(body, {
+  const response = new Response(body, {
     status: res.status,
     statusText: res.statusText,
     headers: res.headers,
   });
+
+  // PAR / token など IdP へのリクエストが失敗したとき、SDK が投げるエラーの message には
+  // サーバが返した error / error_description が含まれない。原因を追えるよう応答本文を出す。
+  // 失敗応答のみを対象にし、リクエスト本文 (code_verifier 等) は出さない。
+  if (!response.ok) {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    console.error(
+      `[klon] ${init?.method ?? "GET"} ${url} -> ${response.status} ${response.statusText}`,
+      new TextDecoder().decode(body),
+    );
+  }
+
+  return response;
 };
+
+/**
+ * OAuth エラーを人が読める形にする。
+ * oauth4webapi の ResponseBodyError などは error / error_description / status を持つが
+ * message には含まれないため、そのまま表示しても原因が分からない。
+ */
+function describeError(err: unknown): string {
+  if (typeof err !== "object" || err === null) return String(err);
+  const e = err as {
+    message?: string;
+    error?: string;
+    error_description?: string;
+    status?: number;
+  };
+  const parts = [
+    e.error,
+    e.error_description,
+    e.status !== undefined ? `HTTP ${e.status}` : undefined,
+  ].filter(Boolean);
+  return parts.length > 0
+    ? `${e.message ?? ""} (${parts.join(" / ")})`.trim()
+    : (e.message ?? String(err));
+}
+
+/** エラーをコンテキスト付きでログに出し、同じ内容を持つ Error に変換する。 */
+function logError(context: string, err: unknown): Error {
+  const detail = describeError(err);
+  console.error(`[klon] ${context}: ${detail}`, err);
+  return new Error(`${context}: ${detail}`);
+}
 
 export const oidcClient = createClient({
   issuer: IDP_BASE_URL,
@@ -122,13 +165,19 @@ async function startLoginInternal(options?: LoginOptions): Promise<TokenSet> {
   }
 
   // Step 1: SDK が PKCE + PAR を処理し、認可URLを生成
-  const { url, session } = await oidcClient.createAuthorizationURL({
-    scopes: options?.scopes ?? [Scopes.OPENID, Scopes.OFFLINE_ACCESS, "native"],
-    acrValues: options?.acrValues,
-    maxAge: options?.maxAge,
-    prompt: options?.prompt,
-    usePAR: true,
-  });
+  let url: URL;
+  let session: AuthorizationSession;
+  try {
+    ({ url, session } = await oidcClient.createAuthorizationURL({
+      scopes: options?.scopes ?? [Scopes.OPENID, Scopes.OFFLINE_ACCESS, "native"],
+      acrValues: options?.acrValues,
+      maxAge: options?.maxAge,
+      prompt: options?.prompt,
+      usePAR: true,
+    }));
+  } catch (err) {
+    throw logError("認可リクエスト (PAR) に失敗しました", err);
+  }
 
   // Step 2: deferred promise を作成（handleCallback() が resolve する）
   const auth = createPendingAuth(session);
@@ -223,7 +272,7 @@ export async function handleCallback(callbackUrl: string): Promise<void> {
       await saveTokens(tokens);
     }
   } catch (err) {
-    auth?.reject(err instanceof Error ? err : new Error(String(err)));
+    auth?.reject(logError("トークン交換に失敗しました", err));
   }
 }
 
@@ -233,5 +282,9 @@ export async function handleCallback(callbackUrl: string): Promise<void> {
  * 同じリフレッシュトークンを繰り返し使用する。
  */
 export async function refreshAccessToken(refreshToken: string): Promise<TokenSet> {
-  return oidcClient.refreshToken(refreshToken);
+  try {
+    return await oidcClient.refreshToken(refreshToken);
+  } catch (err) {
+    throw logError("トークンの更新に失敗しました", err);
+  }
 }
