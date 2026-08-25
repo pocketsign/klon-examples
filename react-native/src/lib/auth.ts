@@ -14,8 +14,13 @@ import { Platform } from "react-native";
 import { secureStoreDPoPKeyStore } from "./dpop-key-store";
 import { saveTokens } from "./token-storage";
 
-// EXPO_PUBLIC_CLIENT_ID 環境変数で上書き可能。
-const CLIENT_ID = process.env.EXPO_PUBLIC_CLIENT_ID ?? "e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a2b";
+// KLON に登録したクライアント ID。利用者ごとに異なるため既定値は持たせない。
+const CLIENT_ID = process.env.EXPO_PUBLIC_CLIENT_ID;
+if (!CLIENT_ID) {
+  throw new Error(
+    "EXPO_PUBLIC_CLIENT_ID が未設定です。.env.template を .env にコピーして設定してください。",
+  );
+}
 export const APP_SCHEME = "klon-example-app";
 const REDIRECT_URI = `${APP_SCHEME}://callback`;
 
@@ -118,7 +123,7 @@ async function startLoginInternal(options?: LoginOptions): Promise<TokenSet> {
 
   // Step 1: SDK が PKCE + PAR を処理し、認可URLを生成
   const { url, session } = await oidcClient.createAuthorizationURL({
-    scopes: options?.scopes ?? [Scopes.OPENID, Scopes.OFFLINE_ACCESS, "pocketsign", "native"],
+    scopes: options?.scopes ?? [Scopes.OPENID, Scopes.OFFLINE_ACCESS, "native"],
     acrValues: options?.acrValues,
     maxAge: options?.maxAge,
     prompt: options?.prompt,

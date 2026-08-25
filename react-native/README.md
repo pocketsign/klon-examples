@@ -18,10 +18,6 @@ RFC 8252 (OAuth 2.0 for Native Apps) に従い、Public Client として OAuth 2
 
 マイナポータルアプリは CustomTabs/ASWebAuthenticationSession には戻れず、本物の Chrome/Safari にしか戻れない。そのため IdP ドメイン上に中間画面を表示してからカスタムスキームでアプリに遷移させる必要がある。
 
-### pocketsign スコープ
-
-このアプリは `pocketsign` スコープを使用する。`pocketsign` スコープのみでリソース権限を要求しない場合、IdP 側で同意画面が自動的にスキップされる。
-
 ## セットアップ
 
 ```sh
