@@ -3,7 +3,6 @@
 //
 // 使い方:
 //   cp .env.template .env  # CLIENT_ID 等を設定
-//   set -a && source .env && set +a
 //   pnpm run dev
 //
 // ブラウザで http://localhost:8080 を開く。

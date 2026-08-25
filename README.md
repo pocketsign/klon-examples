@@ -57,6 +57,10 @@ set -a && source .env && set +a
 go run .
 ```
 
+`set -a && source .env && set +a` は bash / zsh 向けです。それ以外のシェルでは、同等の方法で `.env` の内容を環境変数としてエクスポートしてください。
+
+TypeScript サンプルは Node.js の `--env-file` で `.env` を読み込むため、この手順は不要です。
+
 ### TypeScript
 
 TypeScript サンプルの依存関係の取得には、SDK 取得用トークンが必要です (後述)。
@@ -65,7 +69,6 @@ TypeScript サンプルの依存関係の取得には、SDK 取得用トーク�
 cd typescript
 cp .env.template .env   # 値を設定する
 pnpm install
-set -a && source .env && set +a
 pnpm run dev
 ```
 
