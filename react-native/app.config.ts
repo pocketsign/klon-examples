@@ -2,28 +2,32 @@ import type { ExpoConfig } from "expo/config";
 
 import { version } from "./package.json";
 
+// EAS プロジェクトはビルドする人ごとに異なるため、リポジトリには固定値を持たせない。
+// 未設定でもローカル開発 (expo start) はできる。EAS を使う場合は `eas init` するか
+// EAS_OWNER / EAS_PROJECT_ID を設定する。
+const easOwner = process.env.EAS_OWNER;
+const easProjectId = process.env.EAS_PROJECT_ID;
+
 const config: ExpoConfig = {
   name: "KLONサンプルアプリ",
   slug: "klon-example-app",
-  owner: "pocketsign",
+  ...(easOwner ? { owner: easOwner } : {}),
   version,
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: "klon-example-app",
   userInterfaceStyle: "automatic",
   ios: {
-    bundleIdentifier: "ing.klon.mock.example.app",
-    associatedDomains: ["applinks:app.example.mock.klon.ing"],
+    bundleIdentifier: "you.klon.mock.example.app",
     supportsTablet: true,
     infoPlist: {
       NSAppTransportSecurity: {
         NSAllowsArbitraryLoads: true,
       },
-      ITSAppUsesNonExemptEncryption: false,
     },
   },
   android: {
-    package: "ing.klon.mock.example.app",
+    package: "you.klon.mock.example.app",
     adaptiveIcon: {
       backgroundColor: "#E6F4FE",
       foregroundImage: "./assets/images/android-icon-foreground.png",
@@ -31,19 +35,6 @@ const config: ExpoConfig = {
       monochromeImage: "./assets/images/android-icon-monochrome.png",
     },
     predictiveBackGestureEnabled: false,
-    intentFilters: [
-      {
-        action: "VIEW",
-        autoVerify: true,
-        data: [
-          {
-            scheme: "https",
-            host: "app.example.mock.klon.ing",
-          },
-        ],
-        category: ["BROWSABLE", "DEFAULT"],
-      },
-    ],
   },
   plugins: [
     "expo-router",
@@ -60,17 +51,12 @@ const config: ExpoConfig = {
         },
       },
     ],
-    "@react-native-community/datetimepicker",
   ],
   experiments: {
     typedRoutes: true,
     reactCompiler: true,
   },
-  extra: {
-    eas: {
-      projectId: "9e3156fb-e8a6-4cc3-bd11-fb66c4a271ee",
-    },
-  },
+  ...(easProjectId ? { extra: { eas: { projectId: easProjectId } } } : {}),
 };
 
 export default config;

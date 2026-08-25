@@ -1,8 +1,10 @@
 // IdP のベースURL
 export const IDP_BASE_URL = process.env.EXPO_PUBLIC_IDP_BASE_URL ?? "https://id.mock.klon.you";
 
-// rp-debug (L3 サービス) のURL
-export const RP_DEBUG_URL = process.env.EXPO_PUBLIC_RP_DEBUG_URL ?? "https://klonexample.localhost";
+// WebView に読み込む RP (L3 サービス) の URL。
+// バインド対象の RP は利用者ごとに異なるため、既定値は持たせない。
+// 未設定の場合 L3 Service 画面は設定手順を表示する。
+export const RP_URL = process.env.EXPO_PUBLIC_RP_URL;
 
 // ネイティブアプリ識別用 UserAgent サフィックス
 // サーバー側の nativebind.NativeAppUserAgentSuffix と一致させる

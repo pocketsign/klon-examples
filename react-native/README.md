@@ -26,6 +26,29 @@ RFC 8252 (OAuth 2.0 for Native Apps) に従い、Public Client として OAuth 2
 
 ```sh
 pnpm install
+cp .env.template .env
+```
+
+`.env` の既定値は KLON の mock 環境 (`id.mock.klon.you`) を指している。
+
+### L3 サービス (ネイティブセッションバインド)
+
+`EXPO_PUBLIC_RP_URL` に KLON へ登録済みの RP の URL を設定すると、L3 Service 画面が
+その RP を WebView で開き、`/native/start` の遷移を検出してネイティブセッションバインドを行う。
+未設定の場合、この画面は設定手順のみを表示する。
+
+### EAS プロジェクト
+
+EAS でビルド・配布する場合は、自分の Expo アカウントにプロジェクトを作成する。
+
+```sh
+eas init
+```
+
+CI などで `app.config.ts` を書き換えずに指定したい場合は、環境変数で渡す。
+
+```sh
+EAS_OWNER=<expo-account> EAS_PROJECT_ID=<uuid> eas build --profile development
 ```
 
 ## 開発
@@ -37,7 +60,7 @@ eas build --profile development
 ```
 
 ローカル開発用のアプリをビルドします。
-[Development builds](https://expo.dev/accounts/pocketsign/projects/klon-example-app/development-builds)からビルドしたアプリをインストールします。
+ビルド完了後、Expo の Development builds ページ（`https://expo.dev/accounts/<expo-account>/projects/klon-example-app/development-builds`）からアプリをインストールします。
 
 ### ローカル開発
 
@@ -57,21 +80,3 @@ pnpm run lint
 ```sh
 pnpm run format
 ```
-
-## ビルド・配布（EAS）
-
-### ビルド
-
-```sh
-eas build --auto-submit
-```
-
-ストアへの自動提出を含むビルドを行います。
-
-### OTA 更新
-
-```sh
-eas update
-```
-
-既存インストール済みアプリに対して OTA 更新を配信します。

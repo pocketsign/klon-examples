@@ -4,11 +4,22 @@ import { WebView } from "react-native-webview";
 
 import { useAuth } from "../hooks/use-auth";
 import { useWebViewAuth } from "../hooks/use-webview-auth";
-import { RP_DEBUG_URL, NATIVE_APP_USER_AGENT_SUFFIX } from "../constants";
+import { RP_URL, NATIVE_APP_USER_AGENT_SUFFIX } from "../constants";
 
 export default function L3ServiceScreen() {
   const { isAuthenticated } = useAuth();
   const { webViewRef, isBinding, error, handleShouldStartLoadWithRequest } = useWebViewAuth();
+
+  if (!RP_URL) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.message}>
+          {"EXPO_PUBLIC_RP_URL が未設定です。\n" +
+            "ネイティブセッションバインドを試すには、KLON に登録済みの RP の URL を .env に設定してください。"}
+        </Text>
+      </View>
+    );
+  }
 
   if (!isAuthenticated) {
     return (
@@ -37,7 +48,7 @@ export default function L3ServiceScreen() {
 
       <WebView
         ref={webViewRef}
-        source={{ uri: RP_DEBUG_URL }}
+        source={{ uri: RP_URL }}
         style={styles.webview}
         applicationNameForUserAgent={NATIVE_APP_USER_AGENT_SUFFIX}
         onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
