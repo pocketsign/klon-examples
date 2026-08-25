@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 tsx index.ts",
+    "dev": "tsx --env-file=.env index.ts",
     "lint": "oxlint --type-aware --type-check",
     "lint:fix": "oxlint --type-aware --type-check --fix",
     "format": "oxfmt --check",
