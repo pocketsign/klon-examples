@@ -7,10 +7,9 @@ import {
 } from "@pocketsign/klon-sdk";
 import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
-import { fetch as expoFetch } from "expo/fetch";
 
 import { IDP_BASE_URL } from "../constants";
-import { Platform } from "react-native";
+import { AppState, Platform } from "react-native";
 import { secureStoreDPoPKeyStore } from "./dpop-key-store";
 import { saveTokens } from "./token-storage";
 
@@ -26,17 +25,14 @@ const REDIRECT_URI = `${APP_SCHEME}://callback`;
 
 export type { IDTokenClaims, TokenSet };
 
-// expo/fetch の FetchResponse はネイティブ側でデータ受信時に bodyUsed=true を設定するため
-// (ResponseSink.appendBufferBody)、oauth4webapi の assertReadableResponse チェックで常に失敗する。
-// body を読み取って標準 Response に変換するラッパーで回避する。
-const customFetch: typeof globalThis.fetch = async (input, init) => {
-  const res = await expoFetch(input, init);
-  const body = await res.arrayBuffer();
-  return new Response(body, {
-    status: res.status,
-    statusText: res.statusText,
-    headers: res.headers,
-  });
+// React Native のグローバル fetch では URLSearchParams のシリアライズが正しく動作しない場合があるため、
+// KLON OIDC の form body は明示的に文字列化してから送信する。
+// content-type は oauth4webapi 側で設定済み。
+const customFetch: typeof globalThis.fetch = (input, init) => {
+  const normalizedInit =
+    init?.body instanceof URLSearchParams ? { ...init, body: init.body.toString() } : init;
+
+  return globalThis.fetch(input, normalizedInit);
 };
 
 export const oidcClient = createClient({
@@ -70,6 +66,31 @@ function createPendingAuth(session: AuthorizationSession): PendingAuth {
 
 // 進行中の認証フロー。startLogin() で作成し、handleCallback() で消費する。
 let pendingAuth: PendingAuth | null = null;
+
+/** コールバックがどの経路で届いたか。ブラウザの閉じ方と復帰待ちの判断に使う。 */
+export type CallbackSource = "auth-session" | "navigation-screen" | "unknown";
+
+function waitForAppStateActive(): Promise<void> {
+  if (AppState.currentState === "active") {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve) => {
+    let subscription: { remove(): void } | undefined;
+    subscription = AppState.addEventListener("change", (state) => {
+      if (state !== "active") return;
+      subscription?.remove();
+      resolve();
+    });
+  });
+}
+
+// iOS では Deep Link がアプリの復帰より先に届くことがあり、そのままトークン交換を始めると
+// ASWebAuthenticationSession の終了処理と競合する。アプリが active になるまで待つ。
+async function waitForIosNavigationCallbackActive(source: CallbackSource): Promise<void> {
+  if (Platform.OS !== "ios" || source !== "navigation-screen") return;
+  await waitForAppStateActive();
+}
 
 // MPA 認証中はアプリがバックグラウンドに回るため、OS にプロセスを終了されることがある。
 // その場合 pendingAuth は失われるので、コールバックでトークン交換に必要な
@@ -144,7 +165,7 @@ async function startLoginInternal(options?: LoginOptions): Promise<TokenSet> {
   // 既ログイン等でコールバックがセッション内で捕捉された場合は、
   // Deep Link ルート遷移を待たずにここで処理する。
   if (result.type === "success" && result.url) {
-    await handleCallback(result.url);
+    await handleCallback(result.url, "auth-session");
   }
 
   // openAuthSessionAsync は cancel/dismiss で返る。
@@ -183,14 +204,19 @@ export async function startReauthLogin(options: {
 }
 
 /**
- * OAuth コールバックを処理する（Deep Link 経由）。
+ * OAuth コールバックを処理する。
  *
- * Expo Router の /callback ルートから呼び出される。
- * システムブラウザを閉じ、認可コードでトークン交換を行い、
- * startLogin() が返した Promise を resolve する。
+ * Deep Link (/callback ルート) と openAuthSessionAsync の success 結果の両方から
+ * 呼ばれる合流点で、認可セッションを消費するのはどちらか一方だけ。
+ * 認可コードでトークン交換を行い、startLogin() が返した Promise を resolve する。
  * state の検証は client.exchangeCode() 内で SDK が行う。
+ *
+ * @returns 認可セッションを消費した場合に true。
  */
-export async function handleCallback(callbackUrl: string): Promise<void> {
+export async function handleCallback(
+  callbackUrl: string,
+  source: CallbackSource = "unknown",
+): Promise<boolean> {
   const auth = pendingAuth;
   pendingAuth = null;
 
@@ -199,12 +225,16 @@ export async function handleCallback(callbackUrl: string): Promise<void> {
   // MPA 中にプロセスが終了していた場合、pendingAuth は失われている。
   // 永続化したセッションでトークン交換だけ完了させ、結果はストレージ経由で画面に伝える。
   const session = auth?.session ?? persistedSession;
-  if (!session) return;
-
-  // システムブラウザが開きっぱなしの場合は閉じる
-  if (Platform.OS === "ios") WebBrowser.dismissAuthSession();
+  if (!session) return false;
 
   try {
+    // 初回ログインではマイナポータル経由でアプリに戻るため、callback は Deep Link で先に届く。
+    // Android の Custom Tabs は復帰時に閉じるが、iOS の ASWebAuthenticationSession は残るため
+    // 明示的に閉じる。auth-session 経路では既に閉じているので呼ばない。
+    if (Platform.OS === "ios" && source === "navigation-screen") {
+      WebBrowser.dismissAuthSession();
+    }
+
     const callbackURL = new URL(callbackUrl);
 
     const error = callbackURL.searchParams.get("error");
@@ -215,6 +245,7 @@ export async function handleCallback(callbackUrl: string): Promise<void> {
 
     const code = callbackURL.searchParams.get("code") ?? "";
     const state = callbackURL.searchParams.get("state") ?? "";
+    await waitForIosNavigationCallbackActive(source);
     const tokens = await oidcClient.exchangeCode(code, state, session);
     if (auth) {
       auth.resolve(tokens);
@@ -222,8 +253,10 @@ export async function handleCallback(callbackUrl: string): Promise<void> {
       // コールドスタート経路。saveTokens の購読者 (useAuth) が状態を更新する。
       await saveTokens(tokens);
     }
+    return true;
   } catch (err) {
     auth?.reject(err instanceof Error ? err : new Error(String(err)));
+    return true;
   }
 }
 
