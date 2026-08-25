@@ -30,64 +30,14 @@ export type { IDTokenClaims, TokenSet };
 // (ResponseSink.appendBufferBody)、oauth4webapi の assertReadableResponse チェックで常に失敗する。
 // body を読み取って標準 Response に変換するラッパーで回避する。
 const customFetch: typeof globalThis.fetch = async (input, init) => {
-  // expo/fetch は URLSearchParams のボディをシリアライズしないため、そのまま渡すと
-  // 空ボディで送信され、IdP は client_id が無いとみなして invalid_client を返す。
-  // oauth4webapi は PAR / token のボディを URLSearchParams で渡すので明示的に文字列化する。
-  // content-type は oauth4webapi 側で設定済み。
-  const normalizedInit =
-    init?.body instanceof URLSearchParams ? { ...init, body: init.body.toString() } : init;
-
-  const res = await expoFetch(input, normalizedInit);
+  const res = await expoFetch(input, init);
   const body = await res.arrayBuffer();
-  const response = new Response(body, {
+  return new Response(body, {
     status: res.status,
     statusText: res.statusText,
     headers: res.headers,
   });
-
-  // PAR / token など IdP へのリクエストが失敗したとき、SDK が投げるエラーの message には
-  // サーバが返した error / error_description が含まれない。原因を追えるよう応答本文を出す。
-  // 失敗応答のみを対象にし、リクエスト本文 (code_verifier 等) は出さない。
-  if (!response.ok) {
-    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-    console.error(
-      `[klon] ${init?.method ?? "GET"} ${url} -> ${response.status} ${response.statusText}`,
-      new TextDecoder().decode(body),
-    );
-  }
-
-  return response;
 };
-
-/**
- * OAuth エラーを人が読める形にする。
- * oauth4webapi の ResponseBodyError などは error / error_description / status を持つが
- * message には含まれないため、そのまま表示しても原因が分からない。
- */
-function describeError(err: unknown): string {
-  if (typeof err !== "object" || err === null) return String(err);
-  const e = err as {
-    message?: string;
-    error?: string;
-    error_description?: string;
-    status?: number;
-  };
-  const parts = [
-    e.error,
-    e.error_description,
-    e.status !== undefined ? `HTTP ${e.status}` : undefined,
-  ].filter(Boolean);
-  return parts.length > 0
-    ? `${e.message ?? ""} (${parts.join(" / ")})`.trim()
-    : (e.message ?? String(err));
-}
-
-/** エラーをコンテキスト付きでログに出し、同じ内容を持つ Error に変換する。 */
-function logError(context: string, err: unknown): Error {
-  const detail = describeError(err);
-  console.error(`[klon] ${context}: ${detail}`, err);
-  return new Error(`${context}: ${detail}`);
-}
 
 export const oidcClient = createClient({
   issuer: IDP_BASE_URL,
@@ -172,19 +122,13 @@ async function startLoginInternal(options?: LoginOptions): Promise<TokenSet> {
   }
 
   // Step 1: SDK が PKCE + PAR を処理し、認可URLを生成
-  let url: URL;
-  let session: AuthorizationSession;
-  try {
-    ({ url, session } = await oidcClient.createAuthorizationURL({
-      scopes: options?.scopes ?? [Scopes.OPENID, Scopes.OFFLINE_ACCESS, "native"],
-      acrValues: options?.acrValues,
-      maxAge: options?.maxAge,
-      prompt: options?.prompt,
-      usePAR: true,
-    }));
-  } catch (err) {
-    throw logError("認可リクエスト (PAR) に失敗しました", err);
-  }
+  const { url, session } = await oidcClient.createAuthorizationURL({
+    scopes: options?.scopes ?? [Scopes.OPENID, Scopes.OFFLINE_ACCESS, "native"],
+    acrValues: options?.acrValues,
+    maxAge: options?.maxAge,
+    prompt: options?.prompt,
+    usePAR: true,
+  });
 
   // Step 2: deferred promise を作成（handleCallback() が resolve する）
   const auth = createPendingAuth(session);
@@ -279,7 +223,7 @@ export async function handleCallback(callbackUrl: string): Promise<void> {
       await saveTokens(tokens);
     }
   } catch (err) {
-    auth?.reject(logError("トークン交換に失敗しました", err));
+    auth?.reject(err instanceof Error ? err : new Error(String(err)));
   }
 }
 
@@ -289,9 +233,5 @@ export async function handleCallback(callbackUrl: string): Promise<void> {
  * 同じリフレッシュトークンを繰り返し使用する。
  */
 export async function refreshAccessToken(refreshToken: string): Promise<TokenSet> {
-  try {
-    return await oidcClient.refreshToken(refreshToken);
-  } catch (err) {
-    throw logError("トークンの更新に失敗しました", err);
-  }
+  return oidcClient.refreshToken(refreshToken);
 }
