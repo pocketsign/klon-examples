@@ -33,7 +33,12 @@ export default function CallbackRoute() {
     const callbackUrl = `${APP_SCHEME}://callback?${searchParams.toString()}`;
 
     void handleCallback(callbackUrl).finally(() => {
-      router.dismiss();
+      // コールドスタート時の Deep Link ではこの画面が履歴の起点なので戻り先がない。
+      if (router.canGoBack()) {
+        router.dismiss();
+      } else {
+        router.replace("/");
+      }
     });
   }, [params, router]);
 

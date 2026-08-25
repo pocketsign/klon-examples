@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "../hooks/use-auth";
+import type { IDTokenClaims } from "../lib/auth";
 
 export default function HomeScreen() {
   const { isLoading, isAuthenticated, tokens, claims, error, login, logout, refresh } = useAuth();
@@ -69,7 +70,7 @@ function AuthenticatedView({
   onRefresh,
   onLogout,
 }: {
-  claims: Record<string, unknown> | null;
+  claims: IDTokenClaims | null;
   tokens: { accessToken: string; refreshToken?: string; scope?: string } | null;
   isLoading: boolean;
   onRefresh: () => void;

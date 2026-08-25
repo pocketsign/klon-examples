@@ -2,32 +2,24 @@ import {
   createClient,
   Scopes,
   type AuthorizationSession,
+  type IDTokenClaims,
   type TokenSet,
 } from "@pocketsign/klon-sdk";
+import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
 import { fetch as expoFetch } from "expo/fetch";
 
 import { IDP_BASE_URL } from "../constants";
 import { Platform } from "react-native";
 import { secureStoreDPoPKeyStore } from "./dpop-key-store";
+import { saveTokens } from "./token-storage";
 
 // EXPO_PUBLIC_CLIENT_ID 環境変数で上書き可能。
 const CLIENT_ID = process.env.EXPO_PUBLIC_CLIENT_ID ?? "e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a2b";
 export const APP_SCHEME = "klon-example-app";
 const REDIRECT_URI = `${APP_SCHEME}://callback`;
 
-export type { TokenSet };
-
-export interface IdTokenClaims {
-  sub: string;
-  iss: string;
-  aud: string;
-  exp: number;
-  iat: number;
-  nonce?: string;
-  acr?: string;
-  [key: string]: unknown;
-}
+export type { IDTokenClaims, TokenSet };
 
 // expo/fetch の FetchResponse はネイティブ側でデータ受信時に bodyUsed=true を設定するため
 // (ResponseSink.appendBufferBody)、oauth4webapi の assertReadableResponse チェックで常に失敗する。
@@ -73,6 +65,22 @@ function createPendingAuth(session: AuthorizationSession): PendingAuth {
 
 // 進行中の認証フロー。startLogin() で作成し、handleCallback() で消費する。
 let pendingAuth: PendingAuth | null = null;
+
+// MPA 認証中はアプリがバックグラウンドに回るため、OS にプロセスを終了されることがある。
+// その場合 pendingAuth は失われるので、コールバックでトークン交換に必要な
+// AuthorizationSession (state / nonce / PKCE verifier) を永続化しておく。
+// PKCE verifier を含むため平文の AsyncStorage ではなくセキュアストレージに保存する。
+const AUTH_SESSION_KEY = "klon_auth_session";
+
+async function persistAuthSession(session: AuthorizationSession): Promise<void> {
+  await SecureStore.setItemAsync(AUTH_SESSION_KEY, JSON.stringify(session));
+}
+
+async function takePersistedAuthSession(): Promise<AuthorizationSession | null> {
+  const raw = await SecureStore.getItemAsync(AUTH_SESSION_KEY);
+  await SecureStore.deleteItemAsync(AUTH_SESSION_KEY);
+  return raw ? (JSON.parse(raw) as AuthorizationSession) : null;
+}
 
 /**
  * PAR + PKCE を使用したPublic Clientログインフローを開始する。
@@ -120,6 +128,8 @@ async function startLoginInternal(options?: LoginOptions): Promise<TokenSet> {
   // Step 2: deferred promise を作成（handleCallback() が resolve する）
   const auth = createPendingAuth(session);
   pendingAuth = auth;
+  // ブラウザを開く前に永続化する。開いた後だとプロセス終了に間に合わない可能性がある。
+  await persistAuthSession(session);
 
   // Step 3: システムブラウザを開く
   // MPA 認証後は Safari/Chrome 経由でコールバックが到達するため、
@@ -137,6 +147,8 @@ async function startLoginInternal(options?: LoginOptions): Promise<TokenSet> {
   // まだ処理されていなければユーザーがキャンセルしたと判断する。
   if (pendingAuth === auth) {
     pendingAuth = null;
+    // キャンセルされたフローのセッションを残すと、次回のコールバックで誤って使われる。
+    await SecureStore.deleteItemAsync(AUTH_SESSION_KEY);
     auth.reject(new Error("Authentication was cancelled"));
   }
 
@@ -177,7 +189,12 @@ export async function handleCallback(callbackUrl: string): Promise<void> {
   const auth = pendingAuth;
   pendingAuth = null;
 
-  if (!auth) return;
+  // 永続化したセッションは成否にかかわらず 1 回で使い切る（リプレイ防止）。
+  const persistedSession = await takePersistedAuthSession();
+  // MPA 中にプロセスが終了していた場合、pendingAuth は失われている。
+  // 永続化したセッションでトークン交換だけ完了させ、結果はストレージ経由で画面に伝える。
+  const session = auth?.session ?? persistedSession;
+  if (!session) return;
 
   // システムブラウザが開きっぱなしの場合は閉じる
   if (Platform.OS === "ios") WebBrowser.dismissAuthSession();
@@ -193,10 +210,15 @@ export async function handleCallback(callbackUrl: string): Promise<void> {
 
     const code = callbackURL.searchParams.get("code") ?? "";
     const state = callbackURL.searchParams.get("state") ?? "";
-    const tokens = await oidcClient.exchangeCode(code, state, auth.session);
-    auth.resolve(tokens);
+    const tokens = await oidcClient.exchangeCode(code, state, session);
+    if (auth) {
+      auth.resolve(tokens);
+    } else {
+      // コールドスタート経路。saveTokens の購読者 (useAuth) が状態を更新する。
+      await saveTokens(tokens);
+    }
   } catch (err) {
-    auth.reject(err instanceof Error ? err : new Error(String(err)));
+    auth?.reject(err instanceof Error ? err : new Error(String(err)));
   }
 }
 
@@ -207,19 +229,4 @@ export async function handleCallback(callbackUrl: string): Promise<void> {
  */
 export async function refreshAccessToken(refreshToken: string): Promise<TokenSet> {
   return oidcClient.refreshToken(refreshToken);
-}
-
-/**
- * JWT（IDトークン）のペイロードを検証なしでデコードする。
- * 検証はトークン交換時にサーバー側で行われる。
- */
-export function decodeIdToken(idToken: string): IdTokenClaims {
-  const parts = idToken.split(".");
-  if (parts.length !== 3) {
-    throw new Error("Invalid JWT format");
-  }
-  const base = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-  const padded = base.padEnd(base.length + ((4 - (base.length % 4)) % 4), "=");
-  const decoded = atob(padded);
-  return JSON.parse(decoded) as IdTokenClaims;
 }
