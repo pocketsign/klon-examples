@@ -30,7 +30,14 @@ export type { IDTokenClaims, TokenSet };
 // (ResponseSink.appendBufferBody)、oauth4webapi の assertReadableResponse チェックで常に失敗する。
 // body を読み取って標準 Response に変換するラッパーで回避する。
 const customFetch: typeof globalThis.fetch = async (input, init) => {
-  const res = await expoFetch(input, init);
+  // expo/fetch は URLSearchParams のボディをシリアライズしないため、そのまま渡すと
+  // 空ボディで送信され、IdP は client_id が無いとみなして invalid_client を返す。
+  // oauth4webapi は PAR / token のボディを URLSearchParams で渡すので明示的に文字列化する。
+  // content-type は oauth4webapi 側で設定済み。
+  const normalizedInit =
+    init?.body instanceof URLSearchParams ? { ...init, body: init.body.toString() } : init;
+
+  const res = await expoFetch(input, normalizedInit);
   const body = await res.arrayBuffer();
   const response = new Response(body, {
     status: res.status,
