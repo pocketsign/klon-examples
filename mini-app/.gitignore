@@ -1,0 +1,5 @@
+# Build binary
+backend/backend
+
+# Environment
+.env
