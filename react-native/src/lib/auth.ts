@@ -43,8 +43,6 @@ export const oidcClient = createClient({
   // DPoP (RFC 9449) を有効化: access_token が sender-constrained になる。
   // 鍵ペアは expo-secure-store（セキュアストレージ）に保存する。
   dpop: { keyStore: secureStoreDPoPKeyStore },
-  // ローカル実機検証で http://localhost:8443 を使うため許可。本番では外すこと。
-  allowInsecureRequests: IDP_BASE_URL.startsWith("http://"),
 });
 
 interface PendingAuth {

@@ -1,7 +1,7 @@
 # klon-examples
 
-PocketSign KLON SDK のサンプル集です。Go と TypeScript のそれぞれで、
-OpenID Connect の Authorization Code Flow から Registry API 呼び出しまでの一連の流れを実装しています。
+PocketSign KLON SDK のサンプル集です。
+OpenID Connect の Authorization Code Flow を、サーバーサイドとネイティブアプリのそれぞれで実装しています。
 
 ## サンプル一覧
 
@@ -9,8 +9,12 @@ OpenID Connect の Authorization Code Flow から Registry API 呼び出しま�
 | --- | --- |
 | [`go/`](go/) | Go SDK (`github.com/pocketsign/klon-sdk-go`) を使った最小サンプル |
 | [`typescript/`](typescript/) | TypeScript SDK (`@pocketsign/klon-sdk`) を使った最小サンプル |
+| [`react-native/`](react-native/) | TypeScript SDK を使った Expo / React Native のネイティブアプリサンプル |
 
-どちらも同じフローを実装しており、ローカルで HTTP サーバー (既定で `http://localhost:8080`) を起動します。
+### サーバーサイド (`go/`, `typescript/`)
+
+Confidential Client として、認可コードの交換から Registry API 呼び出しまでを実装しています。
+どちらも同じフローで、ローカルで HTTP サーバー (既定で `http://localhost:8080`) を起動します。
 
 1. `/` : ログイン開始画面
 2. `/authorize` : PKCE + PAR + Authorization Details 付きの認可リクエストを組み立て、IdP へリダイレクト
@@ -20,16 +24,27 @@ OpenID Connect の Authorization Code Flow から Registry API 呼び出しま�
 5. `/refresh` : リフレッシュトークンで新しいトークンを取得
 6. `/logout` : トークンを破棄
 
+### ネイティブアプリ (`react-native/`)
+
+RFC 8252 (OAuth 2.0 for Native Apps) に従った Public Client として、PKCE + PAR + DPoP による
+認可フローと、WebView のネイティブセッションバインドを実装しています。
+セットアップと実行手順は [`react-native/README.md`](react-native/README.md) を参照してください。
+
 ## 前提
 
-- KLON にクライアントを登録し、クライアント ID / クライアントシークレットを取得していること
-- 登録したクライアントのリダイレクト URI に、サンプルで使う URI (既定は `http://localhost:8080/callback`) が含まれていること
+- KLON にクライアントを登録していること
+  (サーバーサイドサンプルは Confidential Client としてクライアントシークレットも必要、
+  React Native サンプルは Public Client)
+- 登録したクライアントのリダイレクト URI に、サンプルで使う URI が含まれていること
+  (サーバーサイドは既定で `http://localhost:8080/callback`、React Native は `klon-example-app://callback`)
 - Go サンプル: Go 1.25 以降
 - TypeScript サンプル: Node.js 22 以降と pnpm
+- React Native サンプル: Node.js 22 以降と pnpm、および iOS / Android の実機かシミュレータ
 
-### 環境変数
+### 環境変数 (サーバーサイドサンプル)
 
 各ディレクトリの `.env.template` をコピーして `.env` を作成し、値を設定してください。
+React Native サンプルの環境変数は [`react-native/README.md`](react-native/README.md) を参照してください。
 
 ```sh
 cp .env.template .env
@@ -74,9 +89,10 @@ pnpm run dev
 
 いずれもサーバー起動後、ブラウザで `http://localhost:8080` を開いてください。
 
-## SDK 取得用トークン (TypeScript のみ)
+## SDK 取得用トークン (TypeScript / React Native)
 
-`typescript/.npmrc` は `@pocketsign` スコープを PocketSign のレジストリに向けています。
+`typescript/.npmrc` と `react-native/.npmrc` は `@pocketsign` スコープを
+PocketSign のレジストリに向けています。
 
 ```
 @pocketsign:registry=https://repo.platform.p8n.app
