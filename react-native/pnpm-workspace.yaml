@@ -1,0 +1,9 @@
+# pnpm は既定で `pnpm run <script>` の前に依存を検証・インストールする。
+# EAS の pre-install フックはトークンを ~/.npmrc に書くためのものなので、
+# それより先に install が走ると @pocketsign の取得が 401 で失敗する。
+verifyDepsBeforeRun: false
+
+allowBuilds:
+  unrs-resolver: true
+minimumReleaseAgeExclude:
+  - "@pocketsign/*"
