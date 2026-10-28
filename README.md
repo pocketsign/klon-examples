@@ -45,7 +45,8 @@ React SPA が In-App SDK でアプリ内かどうかや KLON への対応を判�
   React Native サンプルは Public Client)
 - 登録したクライアントのリダイレクト URI に、サンプルで使う URI が含まれていること
   (サーバーサイドは既定で `http://localhost:8080/callback`、React Native は `klon-example-app://callback`)
-- Go サンプル: Go 1.25 以降
+- Go サンプル・ミニアプリ: Go 1.26.10 以降 (KLON Go SDK の要件)
+- ミニアプリ: 上記に加えて Node.js 22 以降と pnpm
 - TypeScript サンプル: Node.js 22 以降と pnpm
 - React Native サンプル: Node.js 22 以降と pnpm、および iOS / Android の実機かシミュレータ
 

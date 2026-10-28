@@ -34,6 +34,7 @@ KLON はトークンエンドポイントで機密クライアント認証を要
 
 ## 前提
 
+- Go 1.26.10 以降（KLON Go SDK の要件）、Node.js 22 以降と pnpm
 - SDK 取得用トークン。`@pocketsign/in-app-sdk` は `https://repo.platform.p8n.app` から取得するため、`~/.npmrc` に `//repo.platform.p8n.app/:_authToken=<YOUR_SDK_TOKEN>` を設定する。トークンの作成方法は [In-App SDK](https://docs.p8n.app/docs/link-v2/guide/pocketsign-app/in-app-sdk)のセットアップを参照
 - PocketSign Platform でのサービス登録
   - OIDC クライアント（機密クライアント）の `client_id` / `client_secret`
