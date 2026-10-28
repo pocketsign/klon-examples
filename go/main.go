@@ -4,7 +4,8 @@
 // 使い方:
 //
 //	cp .env.template .env  # CLIENT_ID 等を設定
-//	source .env && go run .
+//	set -a && source .env && set +a
+//	go run .
 //
 // ブラウザで http://localhost:8080 を開く。
 package main
