@@ -4,7 +4,8 @@
 //
 // 使い方:
 //
-//	cp ../.env.template ../.env && source ../.env
+//	cp ../.env.template ../.env  # CLIENT_ID 等を設定
+//	set -a && source ../.env && set +a
 //	go run .
 //
 // フロントエンドの開発サーバー (Vite) を別ターミナルで起動し、

@@ -66,8 +66,10 @@ cp .env.template .env  # CLIENT_ID / CLIENT_SECRET 等を設定
 
 ```sh
 cd frontend && pnpm install && pnpm run build
-cd ../backend && source ../.env && go run .
+cd ../backend && set -a && source ../.env && set +a && go run .
 ```
+
+`set -a && source ../.env && set +a` は bash / zsh 向け。それ以外のシェルでは、同等の方法で `.env` の内容を環境変数としてエクスポートする。
 
 http://localhost:8080 を開く。
 
