@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
-import type { AppEnvironment } from "./in-app";
+import type { AppEnvironment, AppUpdateResult } from "./in-app";
 import { detectEnvironment, handleCloseWindow, handleRequestAppUpdate } from "./in-app";
 import type { UserProfile, TokenInfo } from "./api";
 import { fetchMe, fetchTokenInfo, postRefresh, postLogout } from "./api";
-
-const SERVICE_ID = import.meta.env.VITE_SERVICE_ID ?? "";
 
 function Badge({ label, ok }: { label: string; ok: boolean }) {
   return (
@@ -24,7 +22,16 @@ function EnvSection({ env }: { env: AppEnvironment }) {
   );
 }
 
+const UPDATE_RESULT_MESSAGES: Record<Exclude<AppUpdateResult, "requested">, string> = {
+  no_update:
+    "いま適用できるアップデートはありません。取得済みのアップデートは、アプリを再起動すると適用されます。",
+  retry_later: "アップデートを確認できませんでした。時間をおいてもう一度お試しください。",
+  failed: "アップデートを要求できませんでした。ストアからアプリを更新してください。",
+};
+
 function UnsupportedPage({ env }: { env: AppEnvironment }) {
+  const [result, setResult] = useState<AppUpdateResult | null>(null);
+
   return (
     <>
       <h1>KLON Mini App Example</h1>
@@ -32,9 +39,18 @@ function UnsupportedPage({ env }: { env: AppEnvironment }) {
       <p className="error">
         KLON に対応していないバージョンのアプリです。アプリを更新してください。
       </p>
-      <button className="btn" onClick={() => handleRequestAppUpdate(SERVICE_ID)}>
-        アプリを更新
-      </button>
+      {result && result !== "requested" && <p>{UPDATE_RESULT_MESSAGES[result]}</p>}
+      {/* 適用できるアップデートがない場合は、アップデートを促す導線を出さない */}
+      {result !== "no_update" && (
+        <button
+          className="btn"
+          onClick={() => {
+            void handleRequestAppUpdate().then(setResult);
+          }}
+        >
+          アプリを更新
+        </button>
+      )}
     </>
   );
 }

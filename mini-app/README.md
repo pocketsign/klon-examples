@@ -57,7 +57,6 @@ cp .env.template .env  # CLIENT_ID / CLIENT_SECRET 等を設定
 | `REDIRECT_URI` | `http://localhost:8080/callback` | 認可コードの受け取り先 |
 | `PORT` | `8080` | バックエンドの待ち受けポート |
 | `FRONTEND_DIR` | `../frontend/dist` | 配信する SPA のビルド成果物 |
-| `VITE_SERVICE_ID` | - | 旧アプリ向けの `requestAppUpdate` フォールバックで使うサービス ID。フロントエンドのビルド時に埋め込まれる |
 
 環境ごとのエンドポイントは[環境](https://docs.p8n.app/docs/link-v2/guide/environment)を参照。
 
@@ -83,6 +82,17 @@ cd frontend && pnpm run dev  # http://localhost:5173
 ## ポケットサインアプリで開く
 
 ミニアプリブラウザから開いた場合のみ、In-App SDK のアプリ固有機能（`closeWindow` など）が使える。KLON 非対応の旧バージョンのアプリで開かれた場合はアップデート要求の画面を表示する。
+
+アップデート要求（`requestAppUpdate`）の結果は次のように扱う。
+
+| 結果 | 画面 |
+| --- | --- |
+| 成功 | ストアへの遷移、またはアプリの再起動はアプリが行う |
+| `NO_UPDATE_AVAILABLE` | いま適用できるアップデートがない。アップデートを促すボタンを消し、再起動で適用されることを案内する |
+| `DEVICE_UNABLE_TO_PROCESS` | この端末でアップデートを確認・取得できなかった。時間をおいて再試行できるよう、ボタンを残す |
+| その他のエラー | ストアからの更新を案内する |
+
+`isInApp` はポケットサインアプリ 6.9.0 以降でだけ `true` になる。6.9.0 より前のアプリで開かれた場合はブラウザと同じ扱いになり、アップデート要求の画面は表示されない。6.9.0 以降のアプリは `requestAppUpdate` に対応しているため、SDK インスタンスを使う `requestAppUpdateLegacy` は使わない。
 
 ブラウザで開いた場合は `isInApp` が `false` になり、アプリ固有機能のボタンは表示されない。認証・リソース取得はブラウザでもそのまま動作する。
 
