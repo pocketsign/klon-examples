@@ -27,6 +27,7 @@ import (
 	linkv2 "buf.build/gen/go/pocketsign/apis/protocolbuffers/go/pocketsign/link/v2"
 	"connectrpc.com/connect"
 	klon "github.com/pocketsign/klon-sdk-go"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 func envOrDefault(key, fallback string) string {
@@ -248,7 +249,13 @@ func main() {
 			case *linkv2.ResourceValue_String_:
 				resources[rv.IdOrAlias] = v.String_
 			case *linkv2.ResourceValue_Json:
-				resources[rv.IdOrAlias] = json.RawMessage(v.Json.String())
+				// String() は prototext を返すため、JSON への変換は protojson で行う
+				b, err := protojson.Marshal(v.Json)
+				if err != nil {
+					resources[rv.IdOrAlias] = map[string]any{"error": "invalid json value"}
+					continue
+				}
+				resources[rv.IdOrAlias] = json.RawMessage(b)
 			default:
 				resources[rv.IdOrAlias] = "(binary)"
 			}

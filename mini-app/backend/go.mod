@@ -7,6 +7,7 @@ require (
 	buf.build/gen/go/pocketsign/apis/protocolbuffers/go v1.36.11-20260702064312-a4e56ca5773a.1
 	connectrpc.com/connect v1.20.0
 	github.com/pocketsign/klon-sdk-go v0.0.0-20260623090625-cfd8ece158d4
+	google.golang.org/protobuf v1.36.11
 )
 
 require (
@@ -15,5 +16,4 @@ require (
 	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260630182238-925bb5da69e7 // indirect
-	google.golang.org/protobuf v1.36.11 // indirect
 )
