@@ -13,6 +13,7 @@
 package main
 
 import (
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -109,6 +110,44 @@ func clearTokenCookie(w http.ResponseWriter) {
 	})
 }
 
+// --- state Cookie ---
+// 認可リクエストを始めたブラウザでだけコールバックを受け付けるため、state を Cookie にも保存して照合する。
+
+const stateCookieName = "oidc_state"
+
+func setStateCookie(w http.ResponseWriter, state string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     stateCookieName,
+		Value:    state,
+		Path:     "/callback",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   600,
+	})
+}
+
+func clearStateCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     stateCookieName,
+		Value:    "",
+		Path:     "/callback",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+	})
+}
+
+// stateMatchesCookie はコールバックの state が、このブラウザに保存した state と一致するかを返す。
+func stateMatchesCookie(r *http.Request, state string) bool {
+	c, err := r.Cookie(stateCookieName)
+	if err != nil || c.Value == "" {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(c.Value), []byte(state)) == 1
+}
+
 type bearerTransport struct {
 	token string
 }
@@ -183,6 +222,7 @@ func main() {
 		}
 
 		store.Save(session)
+		setStateCookie(w, session.State)
 		http.Redirect(w, r, authURL.String(), http.StatusFound)
 	})
 
@@ -194,6 +234,11 @@ func main() {
 		}
 
 		state := r.URL.Query().Get("state")
+		clearStateCookie(w)
+		if !stateMatchesCookie(r, state) {
+			http.Error(w, "invalid state", http.StatusBadRequest)
+			return
+		}
 		session, ok := store.Load(state)
 		if !ok {
 			http.Error(w, "invalid state", http.StatusBadRequest)
@@ -232,9 +277,11 @@ func main() {
 			},
 		}))
 		if err != nil {
+			// 内部のエラー内容はログに残し、ブラウザには固定のメッセージだけを返す
+			log.Printf("ReadResourceValues failed: %v", err)
 			respondJSON(w, map[string]any{
 				"authenticated": true,
-				"error":         err.Error(),
+				"error":         "Registry API の呼び出しに失敗しました",
 			})
 			return
 		}

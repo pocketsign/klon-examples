@@ -11,6 +11,7 @@
 package main
 
 import (
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -36,6 +37,7 @@ func envOrDefault(key, fallback string) string {
 
 // --- 認可セッション (インメモリ) ---
 // セッションはコールバック後に即削除されるため、グローバル Map で問題ない。
+// 認可を始めたブラウザとの紐付けは、state Cookie との照合で行う。
 
 type sessionStore struct {
 	mu       sync.Mutex
@@ -106,6 +108,44 @@ func clearTokenCookie(w http.ResponseWriter) {
 		MaxAge:   -1,
 		Expires:  time.Unix(0, 0),
 	})
+}
+
+// --- state Cookie ---
+// 認可リクエストを始めたブラウザでだけコールバックを受け付けるため、state を Cookie にも保存して照合する。
+
+const stateCookieName = "oidc_state"
+
+func setStateCookie(w http.ResponseWriter, state string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     stateCookieName,
+		Value:    state,
+		Path:     "/callback",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   600,
+	})
+}
+
+func clearStateCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     stateCookieName,
+		Value:    "",
+		Path:     "/callback",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+	})
+}
+
+// stateMatchesCookie はコールバックの state が、このブラウザに保存した state と一致するかを返す。
+func stateMatchesCookie(r *http.Request, state string) bool {
+	c, err := r.Cookie(stateCookieName)
+	if err != nil || c.Value == "" {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(c.Value), []byte(state)) == 1
 }
 
 // bearerTransport は Authorization ヘッダーを付与する http.RoundTripper。
@@ -194,6 +234,7 @@ func main() {
 		}
 
 		store.Save(session)
+		setStateCookie(w, session.State)
 		http.Redirect(w, r, authURL.String(), http.StatusFound)
 	})
 
@@ -205,6 +246,11 @@ func main() {
 		}
 
 		state := r.URL.Query().Get("state")
+		clearStateCookie(w)
+		if !stateMatchesCookie(r, state) {
+			http.Error(w, "invalid state", http.StatusBadRequest)
+			return
+		}
 		session, ok := store.Load(state)
 		if !ok {
 			http.Error(w, "invalid state", http.StatusBadRequest)
@@ -267,7 +313,9 @@ func main() {
 			},
 		}))
 		if err != nil {
-			fmt.Fprintf(w, `<pre class="error">%s</pre>`, html.EscapeString(err.Error()))
+			// 内部のエラー内容はログに残し、ブラウザには固定のメッセージだけを表示する
+			log.Printf("ReadResourceValues failed: %v", err)
+			fmt.Fprint(w, `<pre class="error">Registry API の呼び出しに失敗しました</pre>`)
 		} else {
 			writeJSON(w, resp.Msg)
 		}
