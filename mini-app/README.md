@@ -7,7 +7,7 @@
 - OIDC 認可コードフロー（PAR + PKCE）でのログイン。`acr_values=urn:klon:acr:high`、`prompt=consent`、`max_age`、`grant_management_action=replace` を指定
 - `authorization_details` によるリソース権限要求（`klon/merged_full_name` は `required=true`、`klon/merged_birth_date`、`klon/email_address`）
 - Registry UserService の `ReadResourceValues` でのリソース取得と、`authorization_details`（付与済み権限）の表示
-- リフレッシュトークンによるトークン更新（`offline_access` スコープ）とログアウト
+- リフレッシュトークンによるトークン更新（`offline_access` スコープ）と、トークンを失効させるログアウト（`RevokeToken`、RFC 7009）
 - In-App SDK によるアプリ内判定（`isInApp`）、KLON 対応判定（`isKLONSupported`）、アップデート要求（`requestAppUpdate`）、ウィンドウを閉じる（`closeWindow`）
 - `pocketsign-manifest.json` の配置
 
@@ -29,7 +29,7 @@ KLON はトークンエンドポイントで機密クライアント認証を要
 | `GET /api/me` | Registry の `ReadResourceValues` の結果を返す |
 | `GET /api/token-info` | 付与済みの `authorization_details` とリフレッシュトークンの有無を返す |
 | `POST /api/refresh` | リフレッシュトークンでトークンを更新する |
-| `POST /api/logout` | トークン cookie を破棄する |
+| `POST /api/logout` | トークンを IdP で失効させ、cookie を破棄する |
 | `GET /*` | `frontend/dist` を配信する（SPA フォールバック） |
 
 ## 前提

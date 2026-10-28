@@ -350,6 +350,17 @@ func main() {
 
 	// --- /api/logout : ログアウト ---
 	mux.HandleFunc("POST /api/logout", func(w http.ResponseWriter, r *http.Request) {
+		// KLON はリフレッシュトークンを失効させると、同じ認可で発行したアクセストークンも失効させる。
+		// 失効に失敗しても Cookie は破棄する。
+		if ts := getTokenFromCookie(r); ts != nil {
+			token, hint := ts.RefreshToken, "refresh_token"
+			if token == "" {
+				token, hint = ts.AccessToken, "access_token"
+			}
+			if err := oidcClient.RevokeToken(r.Context(), token, hint); err != nil {
+				log.Printf("RevokeToken failed: %v", err)
+			}
+		}
 		clearTokenCookie(w)
 		respondJSON(w, map[string]any{"ok": true})
 	})
