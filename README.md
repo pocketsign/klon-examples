@@ -10,6 +10,7 @@ OpenID Connect の Authorization Code Flow を、サーバーサイドとネイ�
 | [`go/`](go/) | Go SDK (`github.com/pocketsign/klon-sdk-go`) を使った最小サンプル |
 | [`typescript/`](typescript/) | TypeScript SDK (`@pocketsign/klon-sdk`) を使った最小サンプル |
 | [`react-native/`](react-native/) | TypeScript SDK を使った Expo / React Native のネイティブアプリサンプル |
+| [`mini-app/`](mini-app/) | Go SDK と In-App SDK (`@pocketsign/in-app-sdk`) を使った、ポケットサインアプリのミニアプリサンプル |
 
 ### サーバーサイド (`go/`, `typescript/`)
 
@@ -29,6 +30,13 @@ Confidential Client として、認可コードの交換から Registry API 呼�
 RFC 8252 (OAuth 2.0 for Native Apps) に従った Public Client として、PKCE + PAR + DPoP による
 認可フローと、WebView のネイティブセッションバインドを実装しています。
 セットアップと実行手順は [`react-native/README.md`](react-native/README.md) を参照してください。
+
+### ミニアプリ (`mini-app/`)
+
+ポケットサインアプリのミニアプリブラウザと通常のブラウザの両方で動作する Web アプリです。
+Go バックエンドが Confidential Client として認可フローと Registry API 呼び出しを行い、
+React SPA が In-App SDK でアプリ内かどうかや KLON への対応を判定します。
+セットアップと実行手順は [`mini-app/README.md`](mini-app/README.md) を参照してください。
 
 ## 前提
 
@@ -89,9 +97,9 @@ pnpm run dev
 
 いずれもサーバー起動後、ブラウザで `http://localhost:8080` を開いてください。
 
-## SDK 取得用トークン (TypeScript / React Native)
+## SDK 取得用トークン (TypeScript / React Native / ミニアプリ)
 
-`typescript/.npmrc` と `react-native/.npmrc` は `@pocketsign` スコープを
+`typescript/.npmrc`、`react-native/.npmrc`、`mini-app/frontend/.npmrc` は `@pocketsign` スコープを
 PocketSign のレジストリに向けています。
 
 ```
