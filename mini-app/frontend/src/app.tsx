@@ -1,8 +1,32 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import type { AppEnvironment, AppUpdateResult } from "./in-app";
 import { detectEnvironment, handleCloseWindow, handleRequestAppUpdate } from "./in-app";
 import type { UserProfile, TokenInfo } from "./api";
 import { fetchMe, fetchTokenInfo, postRefresh, postLogout } from "./api";
+
+const TITLE = "KLON ミニアプリのサンプル";
+
+// 表示する本人情報の項目名
+const RESOURCE_LABELS: Record<string, string> = {
+  "klon/merged_full_name": "氏名",
+  "klon/merged_birth_date": "生年月日",
+  "klon/email_address": "メールアドレス",
+};
+
+// Registry の取得エラーを、利用者向けの言葉にする
+const RESOURCE_ERROR_LABELS: Record<string, string> = {
+  READ_RESOURCE_VALUE_ERROR_NO_VALUE: "未登録",
+  READ_RESOURCE_VALUE_ERROR_NO_PERMISSION: "提供が許可されていません",
+};
+
+function formatResourceValue(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (value && typeof value === "object" && "error" in value) {
+    return RESOURCE_ERROR_LABELS[String(value.error)] ?? "取得できませんでした";
+  }
+  return JSON.stringify(value);
+}
 
 function Badge({ label, ok }: { label: string; ok: boolean }) {
   return (
@@ -12,13 +36,15 @@ function Badge({ label, ok }: { label: string; ok: boolean }) {
   );
 }
 
-function EnvSection({ env }: { env: AppEnvironment }) {
+// アプリ内判定の結果と生のデータは、開発者向けの情報として畳んでおく
+function DevInfo({ env, children }: { env: AppEnvironment; children?: ReactNode }) {
   return (
-    <div className="env-section">
-      <h2>Environment</h2>
+    <details>
+      <summary>開発者向け情報</summary>
       <Badge label="isInApp" ok={env.isInApp} />
       <Badge label="isKLONSupported" ok={env.isKLONSupported} />
-    </div>
+      {children}
+    </details>
   );
 }
 
@@ -34,41 +60,55 @@ function UnsupportedPage({ env }: { env: AppEnvironment }) {
 
   return (
     <>
-      <h1>KLON Mini App Example</h1>
-      <EnvSection env={env} />
+      <h1>{TITLE}</h1>
       <p className="error">
         KLON に対応していないバージョンのアプリです。アプリを更新してください。
       </p>
-      {result && result !== "requested" && <p>{UPDATE_RESULT_MESSAGES[result]}</p>}
+      {result && result !== "requested" && (
+        <p className="notice">{UPDATE_RESULT_MESSAGES[result]}</p>
+      )}
       {/* 適用できるアップデートがない場合は、アップデートを促す導線を出さない */}
       {result !== "no_update" && (
-        <button
-          className="btn"
-          onClick={() => {
-            void handleRequestAppUpdate().then(setResult);
-          }}
-        >
-          アプリを更新
-        </button>
+        <div className="actions">
+          <button
+            className="btn"
+            onClick={() => {
+              void handleRequestAppUpdate().then(setResult);
+            }}
+          >
+            アプリを更新
+          </button>
+        </div>
       )}
+      <DevInfo env={env} />
     </>
   );
 }
 
-function LoginPage({ env }: { env: AppEnvironment }) {
+function LoginPage({ env, loadFailed }: { env: AppEnvironment; loadFailed: boolean }) {
   return (
     <>
-      <h1>KLON Mini App Example</h1>
-      <p>OIDC Authorization Code Flow + Registry API + In-App SDK</p>
-      <EnvSection env={env} />
-      <a className="btn" href="/authorize">
-        KLON でログイン
-      </a>
-      {env.isInApp && (
-        <button className="btn btn-secondary" onClick={handleCloseWindow}>
-          閉じる
-        </button>
+      <h1>{TITLE}</h1>
+      <p>
+        KLON
+        でログインすると、あなたが提供を許可した本人情報（氏名・生年月日・メールアドレス）を、このサービスが取得して表示します。
+      </p>
+      {loadFailed && (
+        <p className="error">
+          サーバーに接続できませんでした。時間をおいて再読み込みしてください。
+        </p>
       )}
+      <div className="actions">
+        <a className="btn" href="/authorize">
+          KLON でログイン
+        </a>
+        {env.isInApp && (
+          <button className="btn btn-secondary" onClick={handleCloseWindow}>
+            閉じる
+          </button>
+        )}
+      </div>
+      <DevInfo env={env} />
     </>
   );
 }
@@ -83,41 +123,63 @@ function Dashboard({
   env: AppEnvironment;
   me: UserProfile;
   tokenInfo: TokenInfo;
-  onRefresh: () => void;
-  onLogout: () => void;
+  onRefresh: () => Promise<string>;
+  onLogout: () => Promise<void>;
 }) {
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string>();
+
+  // 実行中はボタンを無効にし、終わったら結果のメッセージを出す
+  const refresh = async () => {
+    setBusy(true);
+    setMessage(await onRefresh());
+    setBusy(false);
+  };
+  const logout = () => {
+    setBusy(true);
+    void onLogout();
+  };
+
   return (
     <>
-      <h1>KLON Mini App Example</h1>
-      <EnvSection env={env} />
-
-      <h2>User Resources</h2>
+      <h1>{TITLE}</h1>
+      <h2>取得した本人情報</h2>
       {me.error ? (
-        <pre className="error">{me.error}</pre>
-      ) : me.resources ? (
-        <pre>{JSON.stringify(me.resources, null, 2)}</pre>
-      ) : null}
+        <p className="error">{me.error}</p>
+      ) : (
+        <dl className="profile">
+          {Object.entries(RESOURCE_LABELS).map(([id, label]) => (
+            <Fragment key={id}>
+              <dt>{label}</dt>
+              <dd>{formatResourceValue(me.resources?.[id])}</dd>
+            </Fragment>
+          ))}
+        </dl>
+      )}
+      {message && <p className="notice">{message}</p>}
 
-      {tokenInfo.authorizationDetails && tokenInfo.authorizationDetails.length > 0 && (
-        <>
-          <h2>Authorization Details</h2>
-          <pre>{JSON.stringify(tokenInfo.authorizationDetails, null, 2)}</pre>
-        </>
-      )}
+      <div className="actions">
+        {tokenInfo.hasRefreshToken && (
+          <button className="btn" disabled={busy} onClick={() => void refresh()}>
+            トークンを更新
+          </button>
+        )}
+        <button className="btn btn-danger" disabled={busy} onClick={logout}>
+          ログアウト
+        </button>
+        {env.isInApp && (
+          <button className="btn btn-secondary" onClick={handleCloseWindow}>
+            閉じる
+          </button>
+        )}
+      </div>
 
-      {tokenInfo.hasRefreshToken && (
-        <button className="btn" onClick={onRefresh}>
-          トークンをリフレッシュ
-        </button>
-      )}
-      <button className="btn btn-danger" onClick={onLogout}>
-        ログアウト
-      </button>
-      {env.isInApp && (
-        <button className="btn btn-secondary" onClick={handleCloseWindow}>
-          閉じる
-        </button>
-      )}
+      <DevInfo env={env}>
+        <h3>Registry の取得結果</h3>
+        <pre>{JSON.stringify(me.resources ?? null, null, 2)}</pre>
+        <h3>付与された権限（authorization_details）</h3>
+        <pre>{JSON.stringify(tokenInfo.authorizationDetails ?? [], null, 2)}</pre>
+      </DevInfo>
     </>
   );
 }
@@ -126,15 +188,18 @@ export function App() {
   const [env] = useState(() => detectEnvironment());
   const [me, setMe] = useState<UserProfile | null>(null);
   const [tokenInfo, setTokenInfo] = useState<TokenInfo | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const load = async () => {
     try {
       const [meData, tokenData] = await Promise.all([fetchMe(), fetchTokenInfo()]);
       setMe(meData);
       setTokenInfo(tokenData);
+      setLoadFailed(false);
     } catch {
       setMe({ authenticated: false });
       setTokenInfo({ authenticated: false });
+      setLoadFailed(true);
     }
   };
 
@@ -147,11 +212,11 @@ export function App() {
   }
 
   if (!me || !tokenInfo) {
-    return <p>Loading...</p>;
+    return <p>読み込み中…</p>;
   }
 
   if (!me.authenticated) {
-    return <LoginPage env={env} />;
+    return <LoginPage env={env} loadFailed={loadFailed} />;
   }
 
   return (
@@ -159,15 +224,17 @@ export function App() {
       env={env}
       me={me}
       tokenInfo={tokenInfo}
-      onRefresh={() => {
-        void postRefresh()
-          .catch(() => {})
-          .then(load);
+      onRefresh={async () => {
+        const message = await postRefresh().then(
+          () => "トークンを更新しました。",
+          () => "トークンを更新できませんでした。",
+        );
+        await load();
+        return message;
       }}
-      onLogout={() => {
-        void postLogout()
-          .catch(() => {})
-          .then(load);
+      onLogout={async () => {
+        await postLogout().catch(() => {});
+        await load();
       }}
     />
   );
