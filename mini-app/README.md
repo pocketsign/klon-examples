@@ -79,6 +79,8 @@ http://localhost:8080 を開く。
 cd frontend && pnpm run dev  # http://localhost:5173
 ```
 
+既定の `REDIRECT_URI`（`http://localhost:8080/callback`）のままでは、ログイン後にバックエンドの http://localhost:8080 へ戻る。ログイン状態は cookie で共有されるため、http://localhost:5173 を開き直せば開発サーバーで続けられる。ログイン後に開発サーバーへ直接戻すには、`.env` の `REDIRECT_URI` を `http://localhost:5173/callback` にし、同じ値を IdP の `redirect_uri` にも登録する。
+
 ## ポケットサインアプリで開く
 
 ミニアプリブラウザから開いた場合のみ、In-App SDK のアプリ固有機能（`closeWindow` など）が使える。KLON 非対応の旧バージョンのアプリで開かれた場合はアップデート要求の画面を表示する。
@@ -98,7 +100,7 @@ cd frontend && pnpm run dev  # http://localhost:5173
 
 ## pocketsign-manifest.json
 
-[frontend/public/pocketsign-manifest.json](frontend/public/pocketsign-manifest.json) はミニアプリブラウザの動作設定を配信するファイル。このサンプルは自オリジン内でのみ遷移するため `version` だけを持つ。
+[frontend/public/pocketsign-manifest.json](frontend/public/pocketsign-manifest.json) はミニアプリブラウザの動作設定を配信するファイル。このサンプルが自オリジンの外へ遷移するのは、ログイン時の KLON IdP だけ。KLON IdP への遷移はポケットサインアプリが許可するため `allowOrigins` は不要で、`version` だけを持つ。
 
 別オリジンの URL をミニアプリブラウザ内で開く必要がある場合は `allowOrigins` にそのオリジンを追加する。オリジン（scheme + host + port）の完全一致で判定されるため、信頼できるオリジンのみを追加する。
 

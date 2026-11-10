@@ -292,7 +292,7 @@ func main() {
 				resources[rv.IdOrAlias] = map[string]any{"error": rv.Error.String()}
 				continue
 			}
-			switch v := rv.Value.Value.(type) {
+			switch v := rv.GetValue().GetValue().(type) {
 			case *linkv2.ResourceValue_String_:
 				resources[rv.IdOrAlias] = v.String_
 			case *linkv2.ResourceValue_Json:
@@ -343,6 +343,10 @@ func main() {
 			http.Error(w, "token refresh failed", http.StatusInternalServerError)
 			return
 		}
+
+		// refresh_token grant のレスポンスには authorization_details が含まれない。
+		// リフレッシュで付与済みの権限は変わらないため、元の値を引き継ぐ。
+		newTokens.AuthorizationDetails = ts.AuthorizationDetails
 
 		setTokenCookie(w, newTokens)
 		respondJSON(w, map[string]any{"ok": true})

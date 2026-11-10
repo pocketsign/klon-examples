@@ -135,9 +135,10 @@ function Dashboard({
     setMessage(await onRefresh());
     setBusy(false);
   };
-  const logout = () => {
+  const logout = async () => {
     setBusy(true);
-    void onLogout();
+    await onLogout();
+    setBusy(false);
   };
 
   return (
